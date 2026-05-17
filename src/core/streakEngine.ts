@@ -1,11 +1,11 @@
-export interface StreakUpdateResult {
+export interface StreakResult {
   nextStreak: number;
   isReset: boolean;
   isIncremented: boolean;
 }
 
 export const streakEngine = {
-  evaluateStreak(currentStreak: number, score: number): StreakUpdateResult {
+  evaluateStreak(currentStreak: number, score: number): StreakResult {
     if (score >= 70) {
       return {
         nextStreak: currentStreak + 1,
@@ -13,7 +13,7 @@ export const streakEngine = {
         isIncremented: true,
       };
     }
-    
+
     if (score < 40) {
       return {
         nextStreak: 0,
@@ -22,7 +22,6 @@ export const streakEngine = {
       };
     }
 
-    // Maintain current streak if score is between 40 and 70
     return {
       nextStreak: currentStreak,
       isReset: false,

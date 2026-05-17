@@ -1,5 +1,25 @@
-import { aiAnalyzer } from '../core/aiAnalyzer';
 import { storageService } from './storageService';
+
+function generateLocalFeedback(answers: Record<string, boolean>, score: number): string {
+  if (score >= 80) {
+    return "Journée exceptionnelle ! Ta discipline est au sommet. Continue ainsi demain. 🔥";
+  }
+  if (score < 40) {
+    return "Alerte de discipline ! Tu as raté la majorité de tes cibles aujourd'hui. Reprends-toi dès ce soir. ⚠️";
+  }
+  
+  const failed: string[] = [];
+  if (answers.wakeTime === false) failed.push("le réveil tardif ⏰");
+  if (answers.bedTime === false) failed.push("le coucher tardif 🛌");
+  if (answers.screenTime === false) failed.push("le temps d'écran excessif 📱");
+  if (answers.sportTime === false) failed.push("le manque d'activité physique 🏋️");
+  if (answers.readTime === false) failed.push("le manque de lecture 📚");
+
+  if (failed.length > 0) {
+    return `Discipline moyenne aujourd'hui. Ton principal point faible a été ${failed[0]}. Ajuste cela demain.`;
+  }
+  return "Bonne discipline globale aujourd'hui. Reste concentré pour atteindre l'excellence !";
+}
 
 export const aiService = {
   async getApiKey(): Promise<string | null> {
@@ -16,17 +36,15 @@ export const aiService = {
     streak: number
   ): Promise<string> {
     const key = await this.getApiKey();
-    const localFeedback = aiAnalyzer.generateLocalFeedback(answers, score);
+    const localFeedback = generateLocalFeedback(answers, score);
 
     if (!key) {
-      // Offline fallback
       return localFeedback;
     }
 
     try {
-      // Call Gemini API dynamically
       const prompt = `Tu es le coach de discipline IA ultra-direct de l'application Rise.
-Analyse les réponses de l'utilisateur pour l'audit d'aujourd'hui :
+Analyse les réponses de l'utilisateur pour l'audit d'aujourd'hui (les valeurs indiquent si l'objectif a été réussi (true) ou échoué (false)) :
 ${JSON.stringify(answers)}
 Score obtenu : ${score}/100.
 Streak actuel : ${streak} jours.

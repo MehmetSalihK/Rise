@@ -1,36 +1,37 @@
-export type DayCategory = 'MAUVAIS' | 'MOYEN' | 'EXCELLENT';
+import { MetricComparison } from './comparisonEngine';
 
 export interface ScoreReport {
   score: number;
-  category: DayCategory;
+  category: 'MAUVAIS' | 'MOYEN' | 'EXCELLENT';
   color: string;
+  successCount: number;
 }
 
 export const scoringEngine = {
-  calculateScore(answers: Record<string, boolean>): ScoreReport {
-    const keys = Object.keys(answers);
-    if (keys.length === 0) {
-      return { score: 0, category: 'MAUVAIS', color: '#EF4444' };
+  calculateScore(comparisons: MetricComparison[]): ScoreReport {
+    if (comparisons.length === 0) {
+      return { score: 0, category: 'MAUVAIS', color: '#EF4444', successCount: 0 };
     }
 
-    const yesCount = keys.filter(k => answers[k] === true).length;
-    const score = Math.round((yesCount / keys.length) * 100);
+    const successCount = comparisons.filter(c => c.success).length;
+    const score = Math.round((successCount / comparisons.length) * 100);
 
-    let category: DayCategory = 'MOYEN';
-    let color = '#F59E0B'; // Warning (orange)
+    let category: 'MAUVAIS' | 'MOYEN' | 'EXCELLENT' = 'MOYEN';
+    let color = '#F59E0B'; // Orange
 
     if (score >= 70) {
       category = 'EXCELLENT';
-      color = '#22C55E'; // Success (green)
+      color = '#22C55E'; // Green
     } else if (score < 40) {
       category = 'MAUVAIS';
-      color = '#EF4444'; // Danger (red)
+      color = '#EF4444'; // Red
     }
 
     return {
       score,
       category,
       color,
+      successCount,
     };
   }
 };

@@ -2,38 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { storageService, KEYS } from '../services/storageService';
 import { StreakBadge } from '../components/StreakBadge';
-import { ChevronRight, Sparkles, Clock, ShieldAlert, Award } from 'lucide-react-native';
+import { ChevronRight, Clock, ShieldAlert, Award, Sparkles, Activity } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { AuditLog } from '../hooks/useCheckIn';
-import { DailyPlan } from '../core/dailyPlanGenerator';
+import { DailyTrackingLog } from '../hooks/useTracking';
+import { DailyGoals } from '../core/goalEngine';
 
 export function HomeScreen({ navigation }: any) {
   const [time, setTime] = useState('');
   const [date, setDate] = useState('');
   const [currentStreak, setCurrentStreak] = useState(0);
-  const [latestAudit, setLatestAudit] = useState<AuditLog | null>(null);
-  const [dailyPlan, setDailyPlan] = useState<DailyPlan | null>(null);
+  const [latestAudit, setLatestAudit] = useState<DailyTrackingLog | null>(null);
+  const [goalsDefined, setGoalsDefined] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
       const loadDashboard = async () => {
         const streak = await storageService.getItem<number>(KEYS.CURRENT_STREAK, 0);
         const todayStr = new Date().toISOString().split('T')[0];
-        const latest = await storageService.getItem<AuditLog | null>('rise_latestAudit', null);
-        const plan = await storageService.getItem<DailyPlan | null>('rise_dailyPlan', null);
-        
+        const latest = await storageService.getItem<DailyTrackingLog | null>('rise_latestAudit', null);
+        const savedTargets = await storageService.getItem<DailyGoals | null>('rise_dailyGoals_targets', null);
+
         setCurrentStreak(streak);
-        
+        setGoalsDefined(!!savedTargets);
+
         if (latest && latest.date === todayStr) {
           setLatestAudit(latest);
         } else {
           setLatestAudit(null);
-        }
-
-        if (plan && plan.date === todayStr) {
-          setDailyPlan(plan);
-        } else {
-          setDailyPlan(null);
         }
       };
       loadDashboard();
@@ -57,9 +52,6 @@ export function HomeScreen({ navigation }: any) {
     return '#EF4444';
   };
 
-  const planCompletedCount = dailyPlan ? dailyPlan.actions.filter(a => a.completed).length : 0;
-  const planTotalCount = dailyPlan ? dailyPlan.actions.length : 0;
-
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -74,29 +66,33 @@ export function HomeScreen({ navigation }: any) {
           <StreakBadge streak={currentStreak} />
         </View>
 
-        {/* Plan du Jour IA Preview Card */}
-        {dailyPlan && (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate('Plan')}
-            style={styles.planCard}
-          >
-            <View style={styles.planHeader}>
-              <View style={styles.planHeaderLeft}>
-                <Sparkles size={14} color="#6366F1" />
-                <Text style={styles.planTitle}>PLAN DU JOUR IA</Text>
-              </View>
-              <Text style={styles.planProgress}>
-                {planCompletedCount}/{planTotalCount} ACTIONS
+        {/* Daily Goals targets card status */}
+        <View style={styles.goalsStatusCard}>
+          <View style={styles.statusHeader}>
+            <View style={styles.statusHeaderLeft}>
+              <Sparkles size={14} color="#6366F1" />
+              <Text style={styles.statusTitle}>OBJECTIFS CIBLES</Text>
+            </View>
+            <View style={[styles.badge, { backgroundColor: goalsDefined ? 'rgba(34, 197, 94, 0.15)' : 'rgba(245, 158, 11, 0.15)' }]}>
+              <Text style={[styles.badgeText, { color: goalsDefined ? '#22C55E' : '#F59E0B' }]}>
+                {goalsDefined ? 'DÉFINIS' : 'NON AJUSTÉS'}
               </Text>
             </View>
-            <Text style={styles.planGoal}>"{dailyPlan.goal}"</Text>
-            <View style={styles.planFooter}>
-              <Text style={styles.planActionLink}>Ouvrir le plan</Text>
-              <ChevronRight size={14} color="#6366F1" />
-            </View>
+          </View>
+          <Text style={styles.goalsDescText}>
+            {goalsDefined 
+              ? "Tes métriques de discipline sont configurées pour aujourd'hui." 
+              : "Ajuste tes cibles d'heures de réveil, de coucher et d'écran."}
+          </Text>
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('DailyGoals')}
+            style={styles.adjustGoalsButton}
+          >
+            <Text style={styles.adjustGoalsButtonText}>Ajuster mes cibles</Text>
+            <ChevronRight size={12} color="#6366F1" />
           </TouchableOpacity>
-        )}
+        </View>
 
         {/* Daily Audit State Card */}
         {latestAudit ? (
@@ -104,7 +100,7 @@ export function HomeScreen({ navigation }: any) {
             <View style={styles.statusHeader}>
               <View style={styles.statusHeaderLeft}>
                 <Award size={14} color="#6366F1" />
-                <Text style={styles.statusTitle}>AUDIT COMPLÉTÉ</Text>
+                <Text style={styles.statusTitle}>RÉALITÉ ENREGISTRÉE</Text>
               </View>
               <View style={[styles.badge, { backgroundColor: `${getCategoryColor(latestAudit.category)}15` }]}>
                 <Text style={[styles.badgeText, { color: getCategoryColor(latestAudit.category) }]}>
@@ -125,11 +121,11 @@ export function HomeScreen({ navigation }: any) {
             <View style={styles.statusHeader}>
               <View style={styles.statusHeaderLeft}>
                 <ShieldAlert size={14} color="#EF4444" />
-                <Text style={[styles.statusTitle, { color: '#EF4444' }]}>AUDIT REQUIS</Text>
+                <Text style={[styles.statusTitle, { color: '#EF4444' }]}>RÉALITÉ REQUISE</Text>
               </View>
             </View>
             <Text style={styles.feedbackTextEmpty}>
-              Tu n'as pas encore validé ta journée. Fais ton check-in comportemental maintenant.
+              Tu n'as pas encore déclaré tes chiffres réels aujourd'hui. Enregistre ta réalité pour calculer ta discipline.
             </Text>
           </View>
         )}
@@ -137,19 +133,19 @@ export function HomeScreen({ navigation }: any) {
         {/* Main large visual audit button CTA */}
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('CheckIn')}
+          onPress={() => navigation.navigate('InputTracking')}
           style={[styles.ctaButton, latestAudit ? styles.ctaCompleted : styles.ctaActive]}
         >
           <Text style={styles.ctaButtonText}>
-            {latestAudit ? 'REFAIRE LE CHECK-IN' : 'COMMENCER LE CHECK-IN'}
+            {latestAudit ? 'REFAIRE MA DÉCLARATION' : 'ENREGISTRER MA RÉALITÉ'}
           </Text>
           <ChevronRight size={18} color="#ffffff" style={{ marginLeft: 6 }} />
         </TouchableOpacity>
 
         {/* Additional minimal info panel */}
         <View style={styles.infoCard}>
-          <Clock size={14} color="#8A9CAE" style={{ marginRight: 6 }} />
-          <Text style={styles.infoText}>Check-in quotidien • Durée inférieure à 60 secondes</Text>
+          <Activity size={14} color="#8A9CAE" style={{ marginRight: 6 }} />
+          <Text style={styles.infoText}>Objectif cible vs réalité réelle</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -168,7 +164,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 12,
   },
   dateText: {
     color: '#8A9CAE',
@@ -187,53 +183,30 @@ const styles = StyleSheet.create({
   },
   streakWrapper: {
     alignItems: 'center',
-    marginVertical: 12,
+    marginVertical: 8,
   },
-  planCard: {
+  goalsStatusCard: {
     backgroundColor: '#121826',
-    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderColor: '#1F2E45',
     borderWidth: 1,
     borderRadius: 22,
-    padding: 20,
+    padding: 18,
     marginVertical: 10,
   },
-  planHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  planHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  planTitle: {
-    color: '#6366F1',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 1,
-    marginLeft: 6,
-  },
-  planProgress: {
-    color: '#8A9CAE',
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  planGoal: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
-    lineHeight: 18,
+  goalsDescText: {
+    color: '#E0E7FF',
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 16,
     marginVertical: 6,
   },
-  planFooter: {
+  adjustGoalsButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
     marginTop: 6,
   },
-  planActionLink: {
+  adjustGoalsButtonText: {
     color: '#6366F1',
     fontSize: 10,
     fontWeight: '900',

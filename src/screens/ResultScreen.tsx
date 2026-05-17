@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { storageService } from '../services/storageService';
-import { AuditLog } from '../hooks/useCheckIn';
-import { CheckCircle2, ChevronRight, Brain } from 'lucide-react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { DailyTrackingLog } from '../hooks/useTracking';
+import { Award, CheckCircle, XCircle, BrainCircuit } from 'lucide-react-native';
 
 export function ResultScreen({ navigation }: any) {
-  const [log, setLog] = useState<AuditLog | null>(null);
+  const [log, setLog] = useState<DailyTrackingLog | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      const loadResult = async () => {
-        setLoading(true);
-        const latest = await storageService.getItem<AuditLog | null>('rise_latestAudit', null);
-        setLog(latest);
-        setLoading(false);
-      };
-      loadResult();
-    }, [])
-  );
+  useEffect(() => {
+    const fetchLatest = async () => {
+      const latest = await storageService.getItem<DailyTrackingLog | null>('rise_latestAudit', null);
+      setLog(latest);
+      setLoading(false);
+    };
+    fetchLatest();
+  }, []);
 
   if (loading) {
     return (
@@ -32,9 +28,9 @@ export function ResultScreen({ navigation }: any) {
   if (!log) {
     return (
       <SafeAreaView style={styles.loadingSafe}>
-        <Text style={styles.errorText}>Aucun audit trouvé pour aujourd'hui.</Text>
-        <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('Home')} style={styles.button}>
-          <Text style={styles.buttonText}>Retour à l'accueil</Text>
+        <Text style={styles.errorText}>Aucune donnée d'audit aujourd'hui.</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.mainButton}>
+          <Text style={styles.mainButtonText}>Retour à l'accueil</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -51,55 +47,79 @@ export function ResultScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <CheckCircle2 size={32} color="#22C55E" />
-          <Text style={styles.title}>Bilan Complété</Text>
-          <Text style={styles.subtitle}>Ta vérité quotidienne est enregistrée.</Text>
+          <View style={styles.iconBox}>
+            <Award size={22} color={getCategoryColor(log.category)} />
+          </View>
+          <Text style={styles.title}>Bilan Comportemental</Text>
+          <Text style={styles.subtitle}>Voici le verdict chiffré de ta journée.</Text>
         </View>
 
-        {/* Score Ring / Card */}
-        <View style={[styles.scoreCard, { borderColor: getCategoryColor(log.category) }]}>
+        {/* Score Ring / Badge */}
+        <View style={styles.scoreCard}>
           <Text style={[styles.scoreNumber, { color: getCategoryColor(log.category) }]}>
             {log.score}%
           </Text>
-          <Text style={styles.scoreCategory}>{log.category}</Text>
-          <Text style={styles.scoreSub}>SCORE COMPORTEMENTAL DU JOUR</Text>
-        </View>
-
-        {/* AI Report Card */}
-        <View style={styles.aiReportCard}>
-          <View style={styles.aiHeader}>
-            <Brain size={16} color="#6366F1" style={{ marginRight: 6 }} />
-            <Text style={styles.aiTitle}>Analyse du Coach IA</Text>
+          <View style={[styles.badge, { backgroundColor: `${getCategoryColor(log.category)}15` }]}>
+            <Text style={[styles.badgeText, { color: getCategoryColor(log.category) }]}>
+              {log.category}
+            </Text>
           </View>
-          <Text style={styles.aiText}>{log.feedback}</Text>
         </View>
 
-        {/* Details Breakdown */}
-        <View style={styles.breakdownCard}>
-          <Text style={styles.breakdownTitle}>Détails de l'audit</Text>
-          {Object.keys(log.answers).map((key) => {
-            const val = log.answers[key];
-            return (
-              <View key={key} style={styles.row}>
-                <Text style={styles.rowText}>{key.replace(/_/g, ' ').toUpperCase()}</Text>
-                <View style={[styles.badge, { backgroundColor: val ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)' }]}>
-                  <Text style={[styles.badgeText, { color: val ? '#22C55E' : '#EF4444' }]}>
-                    {val ? 'OUI' : 'NON'}
+        {/* Coach Advice */}
+        <View style={styles.coachCard}>
+          <View style={styles.coachHeader}>
+            <BrainCircuit size={16} color="#6366F1" style={{ marginRight: 6 }} />
+            <Text style={styles.coachTitle}>Rapport du Coach IA</Text>
+          </View>
+          <Text style={styles.coachText}>{log.feedback}</Text>
+        </View>
+
+        {/* Targets comparison list */}
+        <Text style={styles.sectionLabel}>Cibles vs Réalité</Text>
+        <View style={styles.list}>
+          {log.comparisons.map((c) => (
+            <View key={c.metric} style={styles.comparisonItem}>
+              <View style={styles.itemHeader}>
+                <Text style={styles.itemLabel}>{c.label}</Text>
+                <View style={styles.statusBox}>
+                  {c.success ? (
+                    <CheckCircle size={14} color="#22C55E" />
+                  ) : (
+                    <XCircle size={14} color="#EF4444" />
+                  )}
+                  <Text style={[styles.statusText, { color: c.success ? '#22C55E' : '#EF4444' }]}>
+                    {c.success ? 'RÉUSSI' : 'ÉCHOUÉ'}
                   </Text>
                 </View>
               </View>
-            );
-          })}
+
+              <View style={styles.comparisonRow}>
+                <View style={styles.valBox}>
+                  <Text style={styles.valLabel}>CIBLE</Text>
+                  <Text style={styles.valText}>{c.target}</Text>
+                </View>
+                <View style={styles.arrowBox}>
+                  <Text style={styles.arrow}>➔</Text>
+                </View>
+                <View style={styles.valBox}>
+                  <Text style={styles.valLabel}>RÉEL</Text>
+                  <Text style={[styles.valText, { color: c.success ? '#22C55E' : '#EF4444' }]}>
+                    {c.actual}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ))}
         </View>
 
-        {/* Confirm Button */}
+        {/* Button CTA */}
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => navigation.navigate('Home')}
-          style={styles.button}
+          style={styles.mainButton}
         >
-          <Text style={styles.buttonText}>Terminer la journée</Text>
-          <ChevronRight size={16} color="#ffffff" style={{ marginLeft: 4 }} />
+          <Text style={styles.mainButtonText}>Terminer la journée</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -120,17 +140,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#0B0F14',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
   },
   errorText: {
     color: '#8A9CAE',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 20,
   },
   header: {
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 12,
+  },
+  iconBox: {
+    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+    padding: 12,
+    borderRadius: 16,
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+    borderWidth: 1,
   },
   title: {
     color: '#ffffff',
@@ -142,107 +168,137 @@ const styles = StyleSheet.create({
     color: '#8A9CAE',
     fontSize: 12,
     fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
   },
   scoreCard: {
     backgroundColor: '#121826',
+    borderColor: '#1F2E45',
     borderWidth: 1,
-    borderRadius: 24,
+    borderRadius: 22,
     padding: 24,
     alignItems: 'center',
     marginVertical: 12,
   },
   scoreNumber: {
-    fontSize: 54,
+    fontSize: 48,
     fontWeight: '900',
-    fontFamily: 'System',
+    letterSpacing: -1,
   },
-  scoreCategory: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 1,
-    marginTop: 4,
-  },
-  scoreSub: {
-    color: '#8A9CAE',
-    fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
     marginTop: 8,
   },
-  aiReportCard: {
-    backgroundColor: '#121826',
-    borderColor: 'rgba(99, 102, 241, 0.25)',
-    borderWidth: 1,
-    borderRadius: 22,
-    padding: 20,
-    marginVertical: 12,
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
-  aiHeader: {
+  coachCard: {
+    backgroundColor: '#121826',
+    borderColor: 'rgba(99, 102, 241, 0.2)',
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 18,
+    marginVertical: 6,
+  },
+  coachHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  aiTitle: {
+  coachTitle: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
     textTransform: 'uppercase',
   },
-  aiText: {
+  coachText: {
     color: '#E0E7FF',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,
     fontStyle: 'italic',
   },
-  breakdownCard: {
+  sectionLabel: {
+    color: '#8A9CAE',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  list: {
+    marginVertical: 6,
+  },
+  comparisonItem: {
     backgroundColor: '#121826',
     borderColor: '#1F2E45',
     borderWidth: 1,
-    borderRadius: 22,
-    padding: 20,
-    marginVertical: 12,
+    borderRadius: 18,
+    padding: 16,
+    marginVertical: 6,
   },
-  breakdownTitle: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 14,
-  },
-  row: {
+  itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1F2E45',
-    paddingVertical: 10,
+    marginBottom: 12,
   },
-  rowText: {
+  itemLabel: {
     color: '#8A9CAE',
-    fontSize: 10,
-    fontWeight: '800',
-    flex: 1,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  badgeText: {
     fontSize: 9,
     fontWeight: '900',
+    letterSpacing: 0.5,
   },
-  button: {
+  statusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 9,
+    fontWeight: '900',
+    marginLeft: 4,
+  },
+  comparisonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  valBox: {
+    width: '40%',
+  },
+  valLabel: {
+    color: '#8A9CAE',
+    fontSize: 8,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  valText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  arrowBox: {
+    width: '20%',
+    alignItems: 'center',
+  },
+  arrow: {
+    color: '#8A9CAE',
+    fontSize: 14,
+  },
+  mainButton: {
     backgroundColor: '#6366F1',
     borderRadius: 14,
     padding: 16,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
   },
-  buttonText: {
+  mainButtonText: {
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '900',

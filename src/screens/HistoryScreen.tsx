@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { storageService } from '../services/storageService';
-import { AuditLog } from '../hooks/useCheckIn';
+import { DailyTrackingLog } from '../hooks/useTracking';
 import { Calendar, AlertCircle } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 export function HistoryScreen() {
-  const [history, setHistory] = useState<AuditLog[]>([]);
+  const [history, setHistory] = useState<DailyTrackingLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     React.useCallback(() => {
       const loadHistory = async () => {
         setLoading(true);
-        const saved = await storageService.getItem<AuditLog[]>('rise_auditHistory', []);
-        setHistory(saved.reverse()); // Show newest first
+        const saved = await storageService.getItem<DailyTrackingLog[]>('rise_auditHistory', []);
+        setHistory([...saved].reverse()); // Show newest first
         setLoading(false);
       };
       loadHistory();
