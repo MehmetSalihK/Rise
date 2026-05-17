@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -11,6 +11,8 @@ import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { NotificationTestScreen } from './src/screens/NotificationTestScreen';
 import { Home, Calendar, Settings as SettingsIcon } from 'lucide-react-native';
+import { notificationService } from './src/services/notificationService';
+import { wakeUpEngine } from './src/core/wakeUpEngine';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -70,6 +72,23 @@ function MainTabs() {
 }
 
 export default function App() {
+  // V8: Lock Screen responses background capture
+  useEffect(() => {
+    const subscription = notificationService.setupNotificationResponseListener(async (actionId) => {
+      if (actionId === 'awake-yes') {
+        await wakeUpEngine.setAwakeStatus(true);
+        // We can display a gentle notification/alert alert inside the UI next time they open!
+        console.log("Awake confirmed directly from lock screen action button! ☀️");
+      } else if (actionId === 'check-yes') {
+        console.log("Discipline validated directly from lock screen action button! ✅");
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   return (
     <NavigationContainer theme={customTheme}>
       <StatusBar style="light" />

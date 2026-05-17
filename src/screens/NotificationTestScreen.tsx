@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { notificationService } from '../services/notificationService';
-import { ArrowLeft, Bell, AlertTriangle, ShieldCheck, RefreshCw, Zap } from 'lucide-react-native';
+import { ArrowLeft, Bell, AlertTriangle, ShieldCheck, RefreshCw, Zap, MessageSquare } from 'lucide-react-native';
 
 export function NotificationTestScreen({ navigation }: any) {
   const [logs, setLogs] = useState<string[]>([]);
@@ -80,6 +80,21 @@ export function NotificationTestScreen({ navigation }: any) {
     }
   };
 
+  const testInteractive = async () => {
+    addLog("Déclenchement : Notification Interactive (Oui/Non) dans 3 secondes...");
+    const id = await notificationService.scheduleInteractiveNotification(
+      'Check-in de Discipline 🎯',
+      'As-tu respecté ton heure de réveil ce matin ? Réponds directement ci-dessous.',
+      'discipline-check-actions',
+      3
+    );
+    if (id) {
+      addLog("Notification interactive planifiée dans 3s. Verrouille ton écran pour la tester !");
+    } else {
+      addLog("Échec de la planification interactive.");
+    }
+  };
+
   const clearLogs = () => {
     setLogs([]);
   };
@@ -127,6 +142,11 @@ export function NotificationTestScreen({ navigation }: any) {
           <TouchableOpacity activeOpacity={0.8} onPress={testCritical} style={[styles.btn, styles.btnCritical]}>
             <AlertTriangle size={16} color="#ffffff" style={{ marginRight: 8 }} />
             <Text style={styles.btnText}>Test Critical Alert</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity activeOpacity={0.8} onPress={testInteractive} style={[styles.btn, styles.btnInteractive]}>
+            <MessageSquare size={16} color="#ffffff" style={{ marginRight: 8 }} />
+            <Text style={styles.btnText}>Test Interactive Actions (Oui/Non)</Text>
           </TouchableOpacity>
         </View>
 
@@ -218,6 +238,9 @@ const styles = StyleSheet.create({
   },
   btnCritical: {
     backgroundColor: '#EF4444',
+  },
+  btnInteractive: {
+    backgroundColor: '#10B981', // green accent for actions
   },
   btnText: {
     color: '#ffffff',
