@@ -20,14 +20,14 @@
 - [⚙️ Stack Technique](#%EF%B8%8F-stack-technique)
 - [🏗️ Architecture du Projet](#%EF%B8%8F-architecture-du-projet)
 - [📱 Aperçu des Écrans](#-aperçu-des-écrans)
-- [🔔 Système de Notifications](#-système-de-notifications)
+- [🔔 Système de Notifications & Actions Interactives (V8)](#-système-de-notifications--actions-interactives-v8)
 - [⏰ Système Smart Wake-Up](#-système-smart-wake-up)
 - [📊 Score de Discipline](#-score-de-discipline)
 - [🔥 Système de Streak](#-système-de-streak)
-- [🧩 Système de Widgets](#-système-de-widgets)
+- [🧩 Assistant & Système de Widgets (V9)](#-assistant--système-de-widgets-v9)
 - [🧪 Diagnostics de Test](#-diagnostics-de-test)
 - [🤖 Coach Personnel IA (Optionnel)](#-coach-personnel-ia-optionnel)
-- [📦 Installation](#-installation)
+- [📦 Installation & Compilation native](#-installation--compilation-native)
 - [⚙️ Configuration](#%EF%B8%8F-configuration)
 - [📁 Structure des Fichiers](#-structure-des-fichiers)
 - [🚧 Améliorations Futures](#-améliorations-futures)
@@ -44,8 +44,8 @@
 - **Check-in Quotidien** : Déclaration chiffrée de ta réalité en moins de 60 secondes.
 - **Score de Discipline** : Calcul mathématique unifié de ta réussite (0 à 100).
 - **Streak System** : Compteur de régularité 🔥 avec règles de *Loss Aversion* (perte du streak en cas de relâchement).
-- **Active Coach Notifications** : Moteur de rappels adaptatif à 3 niveau de pression (Vert, Orange, Rouge).
-- **Widgets System** : Pont de données local (`widgetDataBuilder.ts`) prêt pour WidgetKit (iOS) et AppWidget (Android).
+- **Active Coach & Lock Screen Actions (V8)** : Réponds "Oui" ou "Non" directement depuis ton écran verrouillé sans ouvrir l'app !
+- **Widget Assistant Dashboard (V9)** : Widget simulé dans tes réglages et guide d'installation visuel adapté à ton OS (iOS/Android).
 - **Diagnostics de Test** : Terminal embarqué (`NotificationTestScreen.tsx`) pour tester les vibrations et permissions.
 - **Coach Personnel IA** : Conseils exclusifs rédigés en direct par Google Gemini.
 
@@ -58,7 +58,7 @@ Rise repose sur le principe de la **Discipline Quantifiable**. L'utilisateur n'�
 - **Langage** : TypeScript
 - **Stockage Local** : AsyncStorage (local-first)
 - **Synchronisation Cloud** : Supabase Client (Optionnel)
-- **Notifications** : Expo Notifications
+- **Notifications** : Expo Notifications (avec boutons d'actions natifs)
 - **Composants Graphiques** : Lucide React Native (icons)
 - **Moteur d'IA** : Modèle d'intégration Google Gemini API (Optionnel)
 
@@ -76,21 +76,30 @@ Rise s'appuie sur une séparation stricte des responsabilités (SOC) :
 - **Bilan Réel (`InputTrackingScreen.tsx`)** : Déclaration chiffrée quotidienne rapide.
 - **Résultats Comparatifs (`ResultScreen.tsx`)** : Tableau détaillé cible vs réel avec badges colorés et conseils du coach.
 - **Historique (`HistoryScreen.tsx`)** : Frise chronologique de tes performances passées.
-- **Réglages (`SettingsScreen.tsx`)** : Paramètres utilisateurs, gestion de clé API IA et passerelle vers les tests.
+- **Réglages (`SettingsScreen.tsx`)** : Paramètres utilisateurs, gestion de clé API IA, widget assistant virtuel et passerelle vers les tests.
 - **Diagnostics de Test (`NotificationTestScreen.tsx`)** : Terminal de test matériel haptique.
 
-## 🔔 Système de Notifications
+## 🔔 Système de Notifications & Actions Interactives (V8)
 Le **Pressure System** adapte automatiquement la fréquence des notifications selon ton état de discipline :
 - 🟢 **GOOD STATE** (Score $\ge$ 70) : Motivation douce, le coach reste discret.
 - 🟠 **MEDIUM STATE** (Score 40-70) : Rappels réguliers et équilibrés de recentrage.
 - 🔴 **BAD STATE** (Score < 40 ou inactivité > 24h) : **Pression Active**. Jusqu'à 6 rappels quotidiens ciblés et percutants pour te pousser à réagir !
+
+### ☀️ Boutons sur Écran Verrouillé (V8)
+Rise intègre les catégories d'actions système natives sur l'écran verrouillé :
+* **Réveil matinal (`wake-up-actions`)** :
+  - `☀️ JE SUIS DEBOUT` (ID : `'awake-yes'`) -> Intercepte la réponse et éteint automatiquement l'alarme en tâche de fond !
+  - `🛌 ENCORE 5 MIN` (ID : `'awake-no'`)
+* **Check-in de discipline (`discipline-check-actions`)** :
+  - `✅ OUI, RÉUSSI` (ID : `'check-yes'`)
+  - `❌ NON, ÉCHOUÉ` (ID : `'check-no'`)
 
 ## ⏰ Système Smart Wake-Up
 Dès que ton heure cible de réveil est configurée (ex: 06:30), Rise programme 3 alertes :
 1. **06:30 (Alerte 1)** : *"Il est 06:30 — Réveille-toi maintenant 🌅"*
 2. **06:35 (Alerte 2)** : *"Tu devais être debout depuis 5 minutes... ⚠️"*
 3. **06:40 (Alerte 3)** : *"Commence ta journée maintenant ! 🚨"*
-Le bouton **"JE SUIS DEBOUT ☀️"** sur l'écran d'accueil arrête instantanément le reste de la séquence.
+Le bouton **"JE SUIS DEBOUT ☀️"** sur l'écran d'accueil ou sur la notification interactive arrête instantanément le reste de la séquence.
 
 ## 📊 Score de Discipline
 $$SCORE\_DU\_JOUR = \left( \frac{\text{points réussis}}{\text{total objectifs}} \right) \times 100$$
@@ -104,8 +113,13 @@ Chaque objectif validé (ex: sport effectué $\ge$ cible, ou coucher $\le$ cible
 - **Score < 40** : Ton streak retombe immédiatement à **0** (Loss Aversion).
 - **Entre 40 et 70** : Maintien du streak sans évolution.
 
-## 🧩 Système de Widgets
+## 🧩 Assistant & Système de Widgets (V9)
 Grâce à **`widgetDataBuilder.ts`**, l'application écrit à chaque soumission un conteneur JSON léger contenant ton score, streak et code couleur dans un répertoire persistant partagé. Ce pont de données local est prêt à être lu en arrière-plan par **WidgetKit** (iOS) et **AppWidget** (Android).
+
+### 🍏 Assistant d'Écran d'Accueil (V9)
+Dans ton écran **Paramètres**, une section dédiée d'installation de widget propose :
+* Un **Mockup Simulatif** de ton widget avec ton score et streak actif en temps réel.
+* Un **Modal d'installation intelligent** qui détecte ton OS et t'affiche un tutoriel visuel étape par étape adapté à ton iPhone ou ton appareil Android.
 
 ## 🧪 Diagnostics de Test
 L'écran **`NotificationTestScreen.tsx`** offre un terminal de contrôle matériel :
@@ -113,6 +127,7 @@ L'écran **`NotificationTestScreen.tsx`** offre un terminal de contrôle matéri
 - **Test Wake-Up Alarm** : Simule une alarme sonore et vibratoire après 5s.
 - **Test Reminder Flow** : Envoie une séquence rythmée de 3 alertes (1s, 4s, 7s).
 - **Test Critical Alert** : Déclenche une vibration d'urgence haptique après 1s.
+- **Test Interactive Actions (Oui/Non)** : Envoie une notification interactive avec boutons de lock screen sous 3s.
 
 ## 🤖 Coach Personnel IA (Optionnel)
 En ajoutant ta clé API Google Gemini dans les réglages, le coach IA :
@@ -121,18 +136,29 @@ En ajoutant ta clé API Google Gemini dans les réglages, le coach IA :
 
 ---
 
-## 📦 Installation
-```bash
-# 1. Cloner le projet
-git clone https://github.com/MehmetSalihK/Rise.git
-cd Rise
+## 📦 Installation & Compilation native
 
-# 2. Installer les dépendances
+### 1. Utilisation via Expo Go (100% Gratuite & Instantanée)
+Pour lancer l'application en 10 secondes sur ton iPhone ou Android avec Expo Go :
+```bash
+# Installer les dépendances
 npm install
 
-# 3. Lancer le serveur de développement Expo
-npx expo start
+# Démarrer le serveur Expo Go
+npx expo start --go
 ```
+*Scanne simplement le QR Code s'affichant dans le terminal avec l'appareil photo de ton téléphone pour ouvrir l'application.*
+
+### 2. Compilation Standalone Native (Dossiers natifs)
+Pour compiler l'application en mode natif autonome et activer les widgets d'écrans d'accueils physiques :
+```bash
+# Générer les dossiers natifs iOS et Android
+npx expo prebuild
+
+# Lancer sur ton téléphone Android connecté ou ton émulateur
+npx expo run:android
+```
+*Pour iOS, la compilation locale requiert un ordinateur macOS. Pour compiler dans le cloud depuis ton PC Windows, utilise le service d'EAS Build (`eas build --platform ios`).*
 
 ## ⚙️ Configuration
 Créez un fichier `.env.local` à la racine :
