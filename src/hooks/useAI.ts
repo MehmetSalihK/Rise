@@ -1,16 +1,20 @@
 import { useState, useCallback } from 'react';
-import { useRoutine } from './useRoutine';
-import { useSleep } from './useSleep';
+import { useRoutine, Habit } from './useRoutine';
+import { useSleep, SleepLog } from './useSleep';
 import { useStreak } from './useStreak';
+import { storageService, KEYS } from '../services/storageService';
 import { aiService, UserMood } from '../services/aiService';
 import { disciplineEngine, AIAnalysisOutput } from '../ai/disciplineEngine';
-import { useFocusEffect } from '@react-navigation/native';
+
+const defaultHabits: Habit[] = [
+  { id: 'water', name: 'Boire de l\'eau 💧', completed: false },
+  { id: 'bed', name: 'Faire le lit 🛏️', completed: false },
+  { id: 'teeth', name: 'Brosser les dents 🪥', completed: false },
+  { id: 'stretch', name: 'S\'étirer 🧘', completed: false },
+  { id: 'meditate', name: 'Méditer 🧠', completed: false },
+];
 
 export function useAI() {
-  const { habits, reload: reloadRoutine } = useRoutine();
-  const { sleepHistory, reload: reloadSleep } = useSleep();
-  const { currentStreak, reload: reloadStreak } = useStreak();
-
   const [mood, setMood] = useState<UserMood>('normal');
   const [screenTime, setScreenTime] = useState(2.5);
   const [analysis, setAnalysis] = useState<AIAnalysisOutput>({
@@ -26,26 +30,26 @@ export function useAI() {
 
   const runAnalysis = useCallback(async () => {
     setLoading(true);
-    
-    // Reload underlyings
-    await reloadRoutine();
-    await reloadSleep();
-    await reloadStreak();
 
     const storedMood = await aiService.getUserMood();
     const storedScreen = await aiService.getScreenTimeHours();
+
+    // 1. Fetch values directly from storage to avoid state dependency loops
+    const storedHabits = await storageService.getItem<Habit[]>(KEYS.HABITS, defaultHabits);
+    const storedSleep = await storageService.getItem<SleepLog[]>(KEYS.SLEEP_HISTORY, []);
+    const storedStreak = await storageService.getItem<number>(KEYS.CURRENT_STREAK, 0);
 
     setMood(storedMood);
     setScreenTime(storedScreen);
 
     // Get sleep metrics
-    const lastSleep = sleepHistory[sleepHistory.length - 1];
+    const lastSleep = storedSleep[storedSleep.length - 1];
     const duration = lastSleep ? lastSleep.duration : 7.5;
     const bedtime = lastSleep ? lastSleep.bedtime : '22:30';
 
     // Get routine metrics
-    const completedCount = habits.filter(h => h.completed).length;
-    const totalCount = habits.length;
+    const completedCount = storedHabits.filter(h => h.completed).length;
+    const totalCount = storedHabits.length;
     const completionRate = totalCount === 0 ? 0 : completedCount / totalCount;
     const isCompletedEarly = completedCount === totalCount && new Date().getHours() < 10;
 
@@ -55,20 +59,14 @@ export function useAI() {
       bedtime,
       completionRate,
       isCompletedEarly,
-      currentStreak,
+      storedStreak,
       storedScreen
     );
 
     setAnalysis(result);
     await aiService.logDailyScore(result.disciplineScore);
     setLoading(false);
-  }, [habits, sleepHistory, currentStreak, reloadRoutine, reloadSleep, reloadStreak]);
-
-  useFocusEffect(
-    useCallback(() => {
-      runAnalysis();
-    }, [runAnalysis])
-  );
+  }, []); // Completely empty dependency array: stable callback reference guaranteed
 
   const updateMood = async (newMood: UserMood) => {
     setMood(newMood);
