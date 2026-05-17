@@ -35,6 +35,32 @@ export const notificationService = {
     return finalStatus === 'granted';
   },
 
+  async scheduleImmediateNotification(
+    title: string,
+    body: string,
+    delaySeconds: number = 1
+  ): Promise<string | null> {
+    try {
+      const identifier = await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: true,
+          priority: Notifications.AndroidNotificationPriority.MAX,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: delaySeconds,
+          repeats: false,
+        },
+      });
+      return identifier;
+    } catch (e) {
+      console.warn("Error scheduling immediate notification:", e);
+      return null;
+    }
+  },
+
   async scheduleDailyReminder(
     id: string,
     title: string,

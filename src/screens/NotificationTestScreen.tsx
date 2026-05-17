@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { notificationService } from '../services/notificationService';
 import { ArrowLeft, Bell, AlertTriangle, ShieldCheck, RefreshCw, Zap } from 'lucide-react-native';
 
 export function NotificationTestScreen({ navigation }: any) {
   const [logs, setLogs] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
 
   const addLog = (msg: string) => {
     setLogs((prev) => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
@@ -13,78 +12,72 @@ export function NotificationTestScreen({ navigation }: any) {
 
   const testSimple = async () => {
     addLog("Déclenchement : Test Simple...");
-    await notificationService.scheduleDailyReminder(
-      'test_simple_id',
+    const id = await notificationService.scheduleImmediateNotification(
       'Test Rise Simple 🔔',
       'Ceci est une notification de test immédiat pour valider tes permissions.',
-      new Date(Date.now() + 2000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) // schedule in next minute
+      1
     );
-    // Send one immediate as well
-    addLog("Notification planifiée pour la minute en cours !");
+    if (id) {
+      addLog("Notification simple planifiée dans 1 seconde !");
+    } else {
+      addLog("Échec de la planification.");
+    }
   };
 
   const testWakeUp = async () => {
     addLog("Déclenchement : Simulation Wake-Up Alarm dans 5 secondes...");
-    // Let's schedule in 5 seconds
-    setTimeout(async () => {
-      await notificationService.scheduleDailyReminder(
-        'test_wakeup_id',
-        'Rise Alarme Matinale 🌅',
-        'DEBOUT MEHMET ! Cible de réveil de test atteinte.',
-        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      );
-      addLog("Alarme Wake-Up simulée reçue ! Retours haptiques actifs.");
-    }, 5000);
+    const id = await notificationService.scheduleImmediateNotification(
+      'Rise Alarme Matinale 🌅',
+      'DEBOUT MEHMET ! Cible de réveil de test atteinte.',
+      5
+    );
+    if (id) {
+      addLog("Wake-Up simulée planifiée pour dans 5 secondes.");
+    } else {
+      addLog("Échec de la simulation.");
+    }
   };
 
   const testFlow = async () => {
     addLog("Déclenchement : Flow de 3 rappels consécutifs...");
     
-    // Alert 1 (5s)
-    setTimeout(async () => {
-      addLog("Envoi Rappel 1/3 (Flow)...");
-      await notificationService.scheduleDailyReminder(
-        'test_flow_1',
-        'Discipline Flow (1/3) 🧘',
-        'Premier rappel de discipline active.',
-        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      );
-    }, 3000);
+    // Alert 1 (1s)
+    await notificationService.scheduleImmediateNotification(
+      'Discipline Flow (1/3) 🧘',
+      'Premier rappel de discipline active.',
+      1
+    );
+    addLog("Rappel 1 planifié dans 1s.");
 
-    // Alert 2 (10s)
-    setTimeout(async () => {
-      addLog("Envoi Rappel 2/3 (Flow)...");
-      await notificationService.scheduleDailyReminder(
-        'test_flow_2',
-        'Discipline Flow (2/3) ⚠️',
-        'Deuxième alerte. Reste vigilant.',
-        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      );
-    }, 8000);
+    // Alert 2 (4s)
+    await notificationService.scheduleImmediateNotification(
+      'Discipline Flow (2/3) ⚠️',
+      'Deuxième alerte. Reste vigilant.',
+      4
+    );
+    addLog("Rappel 2 planifié dans 4s.");
 
-    // Alert 3 (15s)
-    setTimeout(async () => {
-      addLog("Envoi Rappel 3/3 (Flow)...");
-      await notificationService.scheduleDailyReminder(
-        'test_flow_3',
-        'Discipline Flow (3/3) 🚨',
-        'Dernière sommation comportementale ! Action requise.',
-        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      );
-    }, 13000);
+    // Alert 3 (7s)
+    await notificationService.scheduleImmediateNotification(
+      'Discipline Flow (3/3) 🚨',
+      'Dernière sommation comportementale ! Action requise.',
+      7
+    );
+    addLog("Rappel 3 planifié dans 7s.");
   };
 
   const testCritical = async () => {
     addLog("Déclenchement : Alerte Critique de Discipline ! 🚨");
-    setTimeout(async () => {
-      await notificationService.scheduleDailyReminder(
-        'test_critical_id',
-        '🚨 URGENCE DISCIPLINE 🚨',
-        'Vibration d\'avertissement intense. Tu dérives totalement ! Éteins ton écran.',
-        new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-      );
-      addLog("Alerte critique envoyée.");
-    }, 2000);
+    const id = await notificationService.scheduleImmediateNotification(
+      '🚨 URGENCE DISCIPLINE 🚨',
+      'Vibration d\'avertissement intense. Tu dérives totalement ! Éteins ton écran.',
+      1
+    );
+    if (id) {
+      addLog("Alerte critique planifiée dans 1s.");
+    } else {
+      addLog("Échec de la planification critique.");
+    }
   };
 
   const clearLogs = () => {
