@@ -1,27 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useRoutine } from '../hooks/useRoutine';
 import { useStreak } from '../hooks/useStreak';
+import { useAI } from '../hooks/useAI';
 import { storageService, KEYS } from '../services/storageService';
 import { StreakBadge } from '../components/StreakBadge';
-import { MotivationalCard } from '../components/MotivationalCard';
-import { Clock, Moon, ChevronRight, Zap } from 'lucide-react-native';
+import { Clock, Moon, ChevronRight, Zap, Brain, ShieldAlert } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 
 export function HomeScreen({ navigation }: any) {
   const { habits, reload: reloadRoutine } = useRoutine();
   const { currentStreak, reload: reloadStreak } = useStreak();
+  const { analysis, loading: aiLoading, recalculate } = useAI();
 
   const [time, setTime] = useState('');
   const [date, setDate] = useState('');
   const [wakeGoal, setWakeGoal] = useState('06:30');
   const [userName, setUserName] = useState('Mehmet');
 
-  // Sync state on focus
   useFocusEffect(
     React.useCallback(() => {
       reloadRoutine();
       reloadStreak();
+      recalculate();
       
       const loadProfile = async () => {
         const goal = await storageService.getItem<string>(KEYS.WAKE_GOAL, '06:30');
@@ -30,7 +31,7 @@ export function HomeScreen({ navigation }: any) {
         setUserName(name);
       };
       loadProfile();
-    }, [reloadRoutine, reloadStreak])
+    }, [reloadRoutine, reloadStreak, recalculate])
   );
 
   useEffect(() => {
@@ -48,6 +49,12 @@ export function HomeScreen({ navigation }: any) {
   const totalCount = habits.length;
   const isFinishedToday = completedCount === totalCount && totalCount > 0;
 
+  const getEnergyColor = (state: string) => {
+    if (state === 'HIGH PERFORMANCE') return '#22C55E';
+    if (state === 'LOW ENERGY') return '#EF4444';
+    return '#6366F1';
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -62,8 +69,64 @@ export function HomeScreen({ navigation }: any) {
           <StreakBadge streak={currentStreak} />
         </View>
 
-        {/* Motivational Greeting */}
         <Text style={styles.greetingText}>Salut, {userName} 👋</Text>
+
+        {/* AI Discipline Score & Status Card */}
+        {aiLoading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="small" color="#6366F1" />
+          </View>
+        ) : (
+          <View style={styles.aiCard}>
+            <View style={styles.aiHeader}>
+              <View style={styles.aiHeaderLeft}>
+                <Brain size={16} color="#6366F1" />
+                <Text style={styles.aiTitle}>Coach IA Discipline</Text>
+              </View>
+              <View 
+                style={[
+                  styles.energyBadge, 
+                  { backgroundColor: `${getEnergyColor(analysis.aiReport.userState)}20` }
+                ]}
+              >
+                <Text 
+                  style={[
+                    styles.energyText, 
+                    { color: getEnergyColor(analysis.aiReport.userState) }
+                  ]}
+                >
+                  {analysis.aiReport.userState}
+                </Text>
+              </View>
+            </View>
+
+            {/* Score view */}
+            <View style={styles.scoreWrapper}>
+              <Text style={styles.scoreNum}>{analysis.disciplineScore}</Text>
+              <View style={{ marginLeft: 12 }}>
+                <Text style={styles.scoreLabel}>Score Discipline</Text>
+                <Text style={styles.scoreSub}>Ajustement automatique actif</Text>
+              </View>
+            </View>
+
+            {/* Dynamic AI message coaching */}
+            <Text style={styles.aiCoachText}>
+              {analysis.motivationalMessage}
+            </Text>
+
+            {/* Risks warnings list */}
+            {analysis.aiReport.risks.length > 0 && (
+              <View style={styles.risksWrapper}>
+                {analysis.aiReport.risks.map((risk, idx) => (
+                  <View key={idx} style={styles.riskBadge}>
+                    <ShieldAlert size={12} color="#EF4444" style={{ marginRight: 4 }} />
+                    <Text style={styles.riskText}>{risk.toUpperCase()}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
         
         {/* Interactive Stats cards */}
         <View style={styles.row}>
@@ -120,8 +183,6 @@ export function HomeScreen({ navigation }: any) {
           </View>
           <ChevronRight size={18} color="#8A9CAE" />
         </TouchableOpacity>
-
-        <MotivationalCard />
       </ScrollView>
     </SafeAreaView>
   );
@@ -272,5 +333,98 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
+  },
+  aiCard: {
+    backgroundColor: '#121826',
+    borderColor: 'rgba(99, 102, 241, 0.25)',
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 20,
+    marginVertical: 12,
+  },
+  aiHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  aiHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  aiTitle: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
+    marginLeft: 6,
+    textTransform: 'uppercase',
+  },
+  energyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  energyText: {
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  scoreWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 14,
+  },
+  scoreNum: {
+    color: '#ffffff',
+    fontSize: 36,
+    fontWeight: '900',
+    fontFamily: 'System',
+  },
+  scoreLabel: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  scoreSub: {
+    color: '#8A9CAE',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  aiCoachText: {
+    color: '#E0E7FF',
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+    marginVertical: 4,
+    fontStyle: 'italic',
+  },
+  risksWrapper: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 12,
+  },
+  riskBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  riskText: {
+    color: '#EF4444',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  loadingBox: {
+    height: 160,
+    backgroundColor: '#121826',
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 12,
   },
 });
