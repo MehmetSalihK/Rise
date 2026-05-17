@@ -1,18 +1,20 @@
-import * as React from "react"
-import { cn } from "@/lib/utils"
+import React from 'react';
+import { View, StyleSheet, ViewProps } from 'react-native';
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "rounded-2xl border border-border bg-card text-card-foreground shadow-sm",
-        className
-      )}
-      {...props}
-    />
-  )
-)
-Card.displayName = "Card"
+export function Card({ style, children, ...props }: ViewProps) {
+  return (
+    <View style={[styles.card, style]} {...props}>
+      {children}
+    </View>
+  );
+}
 
-export { Card }
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#121826',
+    borderColor: '#1F2E45',
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+  },
+});
