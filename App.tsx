@@ -2,14 +2,16 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from './src/screens/HomeScreen';
-import { RoutineScreen } from './src/screens/RoutineScreen';
-import { SleepScreen } from './src/screens/SleepScreen';
-import { StreakScreen } from './src/screens/StreakScreen';
+import { CheckInScreen } from './src/screens/CheckInScreen';
+import { ResultScreen } from './src/screens/ResultScreen';
+import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { Home, CheckSquare, Moon, Flame, Settings as SettingsIcon } from 'lucide-react-native';
+import { Home, Calendar, Settings as SettingsIcon } from 'lucide-react-native';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
 
 const customTheme = {
   ...DarkTheme,
@@ -23,53 +25,57 @@ const customTheme = {
   },
 };
 
+function MainTabs() {
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: '#6366F1',
+        tabBarInactiveTintColor: '#8A9CAE',
+        tabBarStyle: {
+          backgroundColor: '#121826',
+          borderTopWidth: 1,
+          borderTopColor: '#1F2E45',
+          paddingBottom: 6,
+          paddingTop: 6,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '800',
+          textTransform: 'uppercase',
+        },
+        tabBarIcon: ({ color, size, focused }) => {
+          const iconSize = focused ? 22 : 20;
+          switch (route.name) {
+            case 'Home':
+              return <Home size={iconSize} color={color} />;
+            case 'History':
+              return <Calendar size={iconSize} color={color} />;
+            case 'Settings':
+              return <SettingsIcon size={iconSize} color={color} />;
+            default:
+              return null;
+          }
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Accueil' }} />
+      <Tab.Screen name="History" component={HistoryScreen} options={{ title: 'Historique' }} />
+      <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Réglages' }} />
+    </Tab.Navigator>
+  );
+}
+
 export default function App() {
   return (
     <NavigationContainer theme={customTheme}>
       <StatusBar style="light" />
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarActiveTintColor: '#6366F1',
-          tabBarInactiveTintColor: '#8A9CAE',
-          tabBarStyle: {
-            backgroundColor: '#121826',
-            borderTopWidth: 1,
-            borderTopColor: '#1F2E45',
-            paddingBottom: 6,
-            paddingTop: 6,
-            height: 60,
-          },
-          tabBarLabelStyle: {
-            fontSize: 10,
-            fontWeight: '800',
-            textTransform: 'uppercase',
-          },
-          tabBarIcon: ({ color, size, focused }) => {
-            const iconSize = focused ? 22 : 20;
-            switch (route.name) {
-              case 'Home':
-                return <Home size={iconSize} color={color} />;
-              case 'Routine':
-                return <CheckSquare size={iconSize} color={color} />;
-              case 'Sleep':
-                return <Moon size={iconSize} color={color} />;
-              case 'Streak':
-                return <Flame size={iconSize} color={color} />;
-              case 'Settings':
-                return <SettingsIcon size={iconSize} color={color} />;
-              default:
-                return null;
-            }
-          },
-        })}
-      >
-        <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Accueil' }} />
-        <Tab.Screen name="Routine" component={RoutineScreen} options={{ title: 'Routine' }} />
-        <Tab.Screen name="Sleep" component={SleepScreen} options={{ title: 'Sommeil' }} />
-        <Tab.Screen name="Streak" component={StreakScreen} options={{ title: 'Série' }} />
-        <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Réglages' }} />
-      </Tab.Navigator>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="CheckIn" component={CheckInScreen} />
+        <Stack.Screen name="Result" component={ResultScreen} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

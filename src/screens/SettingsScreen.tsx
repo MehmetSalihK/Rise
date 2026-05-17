@@ -2,35 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, SafeAreaView, Switch } from 'react-native';
 import { storageService, KEYS } from '../services/storageService';
 import { notificationService } from '../services/notificationService';
-import { aiService, UserMood } from '../services/aiService';
-import { Settings, User, Bell, Trash2, Shield, Heart, Monitor } from 'lucide-react-native';
+import { aiService } from '../services/aiService';
+import { Settings, User, Bell, Trash2, Shield, Brain } from 'lucide-react-native';
 
 export function SettingsScreen() {
   const [userName, setUserName] = useState('Mehmet');
   const [wakeGoal, setWakeGoal] = useState('06:30');
   const [sleepGoal, setSleepGoal] = useState('22:30');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [geminiKey, setGeminiKey] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
-
-  // AI Inputs
-  const [mood, setMood] = useState<UserMood>('normal');
-  const [screenTime, setScreenTime] = useState('2.5');
 
   useEffect(() => {
     const loadSettings = async () => {
       const name = await storageService.getItem<string>(KEYS.USER_NAME, 'Mehmet');
       const wake = await storageService.getItem<string>(KEYS.WAKE_GOAL, '06:30');
       const sleep = await storageService.getItem<string>(KEYS.SLEEP_GOAL, '22:30');
-      const storedMood = await aiService.getUserMood();
-      const storedScreen = await aiService.getScreenTimeHours();
+      const key = await aiService.getApiKey();
       
       setUserName(name);
       setWakeGoal(wake);
       setSleepGoal(sleep);
-      setMood(storedMood);
-      setScreenTime(storedScreen.toString());
+      setGeminiKey(key || '');
 
-      // Check notification channel permissions
       const granted = await notificationService.registerForPushNotifications();
       setNotificationsEnabled(granted);
     };
@@ -38,16 +32,9 @@ export function SettingsScreen() {
   }, []);
 
   const handleSave = async () => {
-    // Validations
     const timeReg = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (!timeReg.test(wakeGoal) || !timeReg.test(sleepGoal)) {
       alert("Format de temps invalide (HH:MM)");
-      return;
-    }
-
-    const hoursNum = parseFloat(screenTime);
-    if (isNaN(hoursNum) || hoursNum < 0 || hoursNum > 24) {
-      alert("Temps d'écran invalide (doit être entre 0 et 24)");
       return;
     }
 
@@ -55,23 +42,25 @@ export function SettingsScreen() {
     await storageService.setItem(KEYS.WAKE_GOAL, wakeGoal);
     await storageService.setItem(KEYS.SLEEP_GOAL, sleepGoal);
     
-    // Save AI configs
-    await aiService.setUserMood(mood);
-    await aiService.setScreenTimeHours(hoursNum);
+    // Save Gemini key
+    if (geminiKey.trim()) {
+      await aiService.setApiKey(geminiKey.trim());
+    } else {
+      await storageService.setItem('rise_ai_gemini_key', null);
+    }
 
-    // Dynamic Alarms schedule sync if allowed
     if (notificationsEnabled) {
       await notificationService.scheduleDailyReminder(
         'wake_reminder',
-        'Debout, Champion ! 🌅',
-        'Il est temps de commencer ta journée de discipline.',
+        'Life Audit 🌅',
+        'Il est temps de dresser ton bilan comportemental de la veille.',
         wakeGoal
       );
 
       await notificationService.scheduleDailyReminder(
         'sleep_reminder',
-        'Sommeil & Récupération 🛌',
-        'Prépare-toi à dormir. Éteins tes écrans dans 30 minutes.',
+        'Sommeil & Discipline 🛌',
+        'Prépare ton coucher. Laisse ton téléphone de côté.',
         sleepGoal
       );
     } else {
@@ -96,14 +85,13 @@ export function SettingsScreen() {
   };
 
   const handleReset = async () => {
-    if (confirm("Voulez-vous vraiment réinitialiser toutes vos données locales ?")) {
+    if (confirm("Voulez-vous vraiment réinitialiser toutes vos données locales d'audit ?")) {
       await storageService.clearAll();
       setUserName('Mehmet');
       setWakeGoal('06:30');
       setSleepGoal('22:30');
       setNotificationsEnabled(false);
-      setMood('normal');
-      setScreenTime('2.5');
+      setGeminiKey('');
       alert("Toutes les données ont été réinitialisées.");
     }
   };
@@ -118,7 +106,7 @@ export function SettingsScreen() {
           </View>
           <Text style={styles.title}>Paramètres</Text>
           <Text style={styles.subtitle}>
-            Personnalise tes objectifs quotidiens de discipline.
+            Personnalise tes objectifs quotidiens et ton IA.
           </Text>
         </View>
 
@@ -163,59 +151,34 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* AI Discipline Inputs */}
+        {/* AI Key Config Form */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Heart size={16} color="#6366F1" />
-            <Text style={styles.cardTitle}>Variables d'IA Discipline</Text>
+            <Brain size={16} color="#6366F1" />
+            <Text style={styles.cardTitle}>Configuration de l'IA</Text>
           </View>
 
-          {/* Mood Selectors */}
-          <Text style={styles.inputLabel}>Ton état énergétique actuel (Mood)</Text>
-          <View style={styles.moodRow}>
-            {(['fatigué', 'normal', 'motivé'] as UserMood[]).map((m) => (
-              <TouchableOpacity
-                key={m}
-                onPress={() => setMood(m)}
-                style={[
-                  styles.moodButton,
-                  mood === m ? styles.moodButtonActive : styles.moodButtonInactive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.moodButtonText,
-                    mood === m ? styles.moodTextActive : styles.moodTextInactive,
-                  ]}
-                >
-                  {m.toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* ScreenTime Input */}
-          <View style={[styles.inputWrapper, { marginTop: 14 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-              <Monitor size={12} color="#8A9CAE" style={{ marginRight: 4 }} />
-              <Text style={styles.inputLabelNoMargin}>Temps d'écran estimé (heures)</Text>
-            </View>
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputLabel}>Clé API Google Gemini</Text>
             <TextInput
               style={styles.textInput}
-              value={screenTime}
-              onChangeText={setScreenTime}
-              keyboardType="numeric"
-              placeholder="2.5"
+              value={geminiKey}
+              onChangeText={setGeminiKey}
+              secureTextEntry
+              placeholder="AIzaSy..."
               placeholderTextColor="#8A9CAE"
             />
+            <Text style={styles.inputDesc}>
+              Optionnel. Si vide, l'application utilise son moteur d'analyse hors-ligne ultra-rapide par défaut.
+            </Text>
           </View>
 
           <TouchableOpacity activeOpacity={0.8} onPress={handleSave} style={styles.button}>
-            <Text style={styles.buttonText}>Enregistrer tout</Text>
+            <Text style={styles.buttonText}>Enregistrer</Text>
           </TouchableOpacity>
 
           {saveSuccess && (
-            <Text style={styles.successText}>Paramètres IA sauvegardés avec succès ! ✨</Text>
+            <Text style={styles.successText}>Paramètres sauvegardés avec succès ! ✨</Text>
           )}
         </View>
 
@@ -229,7 +192,7 @@ export function SettingsScreen() {
           <View style={styles.toggleRow}>
             <View>
               <Text style={styles.toggleLabel}>Rappels Quotidiens</Text>
-              <Text style={styles.toggleDesc}>Réveil, routine et coucher</Text>
+              <Text style={styles.toggleDesc}>Check-in comportemental</Text>
             </View>
             <Switch
               value={notificationsEnabled}
@@ -320,11 +283,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: 'uppercase',
   },
-  inputLabelNoMargin: {
+  inputDesc: {
     color: '#8A9CAE',
     fontSize: 10,
-    fontWeight: '800',
-    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginTop: 6,
+    lineHeight: 14,
   },
   textInput: {
     backgroundColor: '#1C2638',
@@ -342,7 +306,7 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+    marginTop: 4,
   },
   buttonText: {
     color: '#ffffff',
@@ -388,36 +352,5 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  moodRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 4,
-  },
-  moodButton: {
-    width: '31%',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  moodButtonActive: {
-    backgroundColor: '#6366F1',
-    borderColor: '#6366F1',
-  },
-  moodButtonInactive: {
-    backgroundColor: '#1C2638',
-    borderColor: '#1F2E45',
-  },
-  moodButtonText: {
-    fontSize: 10,
-    fontWeight: '900',
-  },
-  moodTextActive: {
-    color: '#ffffff',
-  },
-  moodTextInactive: {
-    color: '#8A9CAE',
   },
 });

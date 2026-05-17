@@ -1,45 +1,58 @@
+import { aiAnalyzer } from '../core/aiAnalyzer';
 import { storageService } from './storageService';
 
-export const AI_KEYS = {
-  USER_MOOD: 'rise_ai_userMood',
-  SCREEN_TIME: 'rise_ai_screenTime',
-  DAILY_SCORE_HISTORY: 'rise_ai_dailyScoreHistory',
-};
-
-export type UserMood = 'fatigué' | 'normal' | 'motivé';
-
-export interface ScoreHistoryEntry {
-  date: string;
-  score: number;
-}
-
 export const aiService = {
-  async getUserMood(): Promise<UserMood> {
-    return await storageService.getItem<UserMood>(AI_KEYS.USER_MOOD, 'normal');
+  async getApiKey(): Promise<string | null> {
+    return await storageService.getItem<string | null>('rise_ai_gemini_key', null);
   },
 
-  async setUserMood(mood: UserMood): Promise<void> {
-    await storageService.setItem(AI_KEYS.USER_MOOD, mood);
+  async setApiKey(key: string): Promise<void> {
+    await storageService.setItem('rise_ai_gemini_key', key);
   },
 
-  async getScreenTimeHours(): Promise<number> {
-    return await storageService.getItem<number>(AI_KEYS.SCREEN_TIME, 2.5);
-  },
+  async generateDailyAuditReport(
+    answers: Record<string, boolean>,
+    score: number,
+    streak: number
+  ): Promise<string> {
+    const key = await this.getApiKey();
+    const localFeedback = aiAnalyzer.generateLocalFeedback(answers, score);
 
-  async setScreenTimeHours(hours: number): Promise<void> {
-    await storageService.setItem(AI_KEYS.SCREEN_TIME, hours);
-  },
+    if (!key) {
+      // Offline fallback
+      return localFeedback;
+    }
 
-  async logDailyScore(score: number): Promise<void> {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const history = await storageService.getItem<ScoreHistoryEntry[]>(AI_KEYS.DAILY_SCORE_HISTORY, []);
-    
-    // Replace today if already logged
-    const updated = [...history.filter(e => e.date !== todayStr), { date: todayStr, score }];
-    await storageService.setItem(AI_KEYS.DAILY_SCORE_HISTORY, updated);
-  },
+    try {
+      // Call Gemini API dynamically
+      const prompt = `Tu es le coach de discipline IA ultra-direct de l'application Rise.
+Analyse les réponses de l'utilisateur pour l'audit d'aujourd'hui :
+${JSON.stringify(answers)}
+Score obtenu : ${score}/100.
+Streak actuel : ${streak} jours.
 
-  async getScoreHistory(): Promise<ScoreHistoryEntry[]> {
-    return await storageService.getItem<ScoreHistoryEntry[]>(AI_KEYS.DAILY_SCORE_HISTORY, []);
+Rédige un bilan en 2-3 phrases maximum, percutant, direct, sans fioritures (style Apple Fitness). Dis-lui précisément quel est son point faible aujourd'hui et donne-lui une consigne claire pour demain.`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        }
+      );
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      return text ? text.trim() : localFeedback;
+    } catch (e) {
+      console.warn("Gemini API error, falling back to local analyzer", e);
+      return localFeedback;
+    }
   }
 };
