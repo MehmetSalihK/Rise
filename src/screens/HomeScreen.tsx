@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { storageService, KEYS } from '../services/storageService';
 import { StreakBadge } from '../components/StreakBadge';
-import { ChevronRight, Clock, ShieldAlert, Award, Sparkles, Activity } from 'lucide-react-native';
+import { ChevronRight, Clock, ShieldAlert, Award, Sparkles, Activity, ShieldCheck } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { DailyTrackingLog } from '../hooks/useTracking';
 import { DailyGoals } from '../core/goalEngine';
+import { permissionManager } from '../notifications/permissionManager';
+import { pressureSystem, PressureState } from '../notifications/pressureSystem';
 
 export function HomeScreen({ navigation }: any) {
   const [time, setTime] = useState('');
@@ -13,6 +15,18 @@ export function HomeScreen({ navigation }: any) {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [latestAudit, setLatestAudit] = useState<DailyTrackingLog | null>(null);
   const [goalsDefined, setGoalsDefined] = useState(false);
+  const [pressure, setPressure] = useState<PressureState>('MEDIUM');
+
+  // Permission flow onboarding
+  useEffect(() => {
+    const onboard = async () => {
+      const granted = await permissionManager.checkPermissionStatus();
+      if (!granted) {
+        await permissionManager.requestAllPermissions();
+      }
+    };
+    onboard();
+  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -21,9 +35,11 @@ export function HomeScreen({ navigation }: any) {
         const todayStr = new Date().toISOString().split('T')[0];
         const latest = await storageService.getItem<DailyTrackingLog | null>('rise_latestAudit', null);
         const savedTargets = await storageService.getItem<DailyGoals | null>('rise_dailyGoals_targets', null);
+        const activePressure = await pressureSystem.evaluateCurrentPressure();
 
         setCurrentStreak(streak);
         setGoalsDefined(!!savedTargets);
+        setPressure(activePressure);
 
         if (latest && latest.date === todayStr) {
           setLatestAudit(latest);
@@ -52,6 +68,18 @@ export function HomeScreen({ navigation }: any) {
     return '#EF4444';
   };
 
+  const getPressureColor = (p: PressureState) => {
+    if (p === 'GOOD') return '#22C55E';
+    if (p === 'MEDIUM') return '#F59E0B';
+    return '#EF4444';
+  };
+
+  const getPressureLabel = (p: PressureState) => {
+    if (p === 'GOOD') return '🟢 DISCIPLINE SAINE';
+    if (p === 'MEDIUM') return '🟠 COACH ATTIENTIF';
+    return '🔴 PRESSION DISSOCIATIVE ACTIVE';
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -64,6 +92,23 @@ export function HomeScreen({ navigation }: any) {
         {/* Streak 🔥 Badge */}
         <View style={styles.streakWrapper}>
           <StreakBadge streak={currentStreak} />
+        </View>
+
+        {/* Dynamic V6 Pressure Coach status badge */}
+        <View style={[styles.pressureCard, { borderColor: `${getPressureColor(pressure)}40` }]}>
+          <View style={styles.pressureRow}>
+            <ShieldCheck size={14} color={getPressureColor(pressure)} />
+            <Text style={[styles.pressureText, { color: getPressureColor(pressure) }]}>
+              {getPressureLabel(pressure)}
+            </Text>
+          </View>
+          <Text style={styles.pressureDesc}>
+            {pressure === 'GOOD' 
+              ? "Discipline optimale. L'IA se fait discrète pour te laisser performer seul." 
+              : pressure === 'MEDIUM' 
+              ? "Suivi attentif. Des rappels modérés t'aident à garder ton rythme stable." 
+              : "Alerte dérive ! Le système de pression s'intensifie avec des alertes rythmées."}
+          </Text>
         </View>
 
         {/* Daily Goals targets card status */}
@@ -185,13 +230,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 8,
   },
+  pressureCard: {
+    backgroundColor: '#121826',
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 16,
+    marginVertical: 8,
+  },
+  pressureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  pressureText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginLeft: 6,
+  },
+  pressureDesc: {
+    color: '#8A9CAE',
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 15,
+  },
   goalsStatusCard: {
     backgroundColor: '#121826',
     borderColor: '#1F2E45',
     borderWidth: 1,
     borderRadius: 22,
     padding: 18,
-    marginVertical: 10,
+    marginVertical: 8,
   },
   goalsDescText: {
     color: '#E0E7FF',
@@ -218,7 +287,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 22,
     padding: 20,
-    marginVertical: 10,
+    marginVertical: 8,
   },
   statusHeader: {
     flexDirection: 'row',

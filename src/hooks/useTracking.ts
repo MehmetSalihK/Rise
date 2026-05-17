@@ -5,6 +5,8 @@ import { comparisonEngine, TrackingValues, MetricComparison } from '../core/comp
 import { scoringEngine, ScoreReport } from '../core/scoringEngine';
 import { streakEngine } from '../core/streakEngine';
 import { aiService } from '../services/aiService';
+import { widgetDataBuilder } from '../widgets/widgetDataBuilder';
+import { notificationScheduler } from '../notifications/notificationScheduler';
 
 export interface DailyTrackingLog {
   date: string;
@@ -97,6 +99,21 @@ export function useTracking() {
     const updated = [...history.filter(h => h.date !== todayStr), newLog];
     await storageService.setItem('rise_auditHistory', updated);
     await storageService.setItem('rise_latestAudit', newLog);
+
+    // Widget State Sync
+    await widgetDataBuilder.syncWidgetData(
+      scoreReport.score,
+      streakResult.nextStreak,
+      scoreReport.category,
+      scoreReport.color
+    );
+
+    // Scheduler reset based on V6 active pressure
+    const stateMapping: 'GOOD' | 'MEDIUM' | 'BAD' = 
+      scoreReport.category === 'EXCELLENT' ? 'GOOD' :
+      scoreReport.category === 'MAUVAIS' ? 'BAD' : 'MEDIUM';
+    
+    await notificationScheduler.schedulePressureCoachAlerts(stateMapping);
 
     setLoading(false);
   };

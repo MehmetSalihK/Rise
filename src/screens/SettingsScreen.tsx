@@ -3,21 +3,23 @@ import { StyleSheet, Text, View, ScrollView, TextInput, TouchableOpacity, SafeAr
 import { storageService, KEYS } from '../services/storageService';
 import { notificationService } from '../services/notificationService';
 import { aiService } from '../services/aiService';
-import { Settings, User, Bell, Trash2, Shield, Brain } from 'lucide-react-native';
+import { notificationScheduler } from '../notifications/notificationScheduler';
+import { Settings, User, Bell, Trash2, Shield, Brain, Activity } from 'lucide-react-native';
 
 export function SettingsScreen() {
   const [userName, setUserName] = useState('Mehmet');
-  const [wakeGoal, setWakeGoal] = useState('06:30');
-  const [sleepGoal, setSleepGoal] = useState('22:30');
+  const [wakeGoal, setWakeGoal] = useState('07:00');
+  const [sleepGoal, setSleepGoal] = useState('23:00');
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [geminiKey, setGeminiKey] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [testSuccessMessage, setTestSuccessMessage] = useState('');
 
   useEffect(() => {
     const loadSettings = async () => {
       const name = await storageService.getItem<string>(KEYS.USER_NAME, 'Mehmet');
-      const wake = await storageService.getItem<string>(KEYS.WAKE_GOAL, '06:30');
-      const sleep = await storageService.getItem<string>(KEYS.SLEEP_GOAL, '22:30');
+      const wake = await storageService.getItem<string>(KEYS.WAKE_GOAL, '07:00');
+      const sleep = await storageService.getItem<string>(KEYS.SLEEP_GOAL, '23:00');
       const key = await aiService.getApiKey();
       
       setUserName(name);
@@ -50,19 +52,7 @@ export function SettingsScreen() {
     }
 
     if (notificationsEnabled) {
-      await notificationService.scheduleDailyReminder(
-        'wake_reminder',
-        'Life Audit 🌅',
-        'Il est temps de dresser ton bilan comportemental de la veille.',
-        wakeGoal
-      );
-
-      await notificationService.scheduleDailyReminder(
-        'sleep_reminder',
-        'Sommeil & Discipline 🛌',
-        'Prépare ton coucher. Laisse ton téléphone de côté.',
-        sleepGoal
-      );
+      await notificationScheduler.schedulePressureCoachAlerts('MEDIUM');
     } else {
       await notificationService.cancelAllReminders();
     }
@@ -75,8 +65,10 @@ export function SettingsScreen() {
     if (value) {
       const granted = await notificationService.registerForPushNotifications();
       setNotificationsEnabled(granted);
-      if (!granted) {
-        alert("Permission de notification refusée. Activez-la dans les réglages de votre téléphone.");
+      if (granted) {
+        await notificationScheduler.schedulePressureCoachAlerts('MEDIUM');
+      } else {
+        alert("Permission de notification refusée. Activez-la dans les réglages.");
       }
     } else {
       setNotificationsEnabled(false);
@@ -84,12 +76,24 @@ export function SettingsScreen() {
     }
   };
 
+  const triggerPressureTest = async (state: 'GOOD' | 'BAD') => {
+    try {
+      setTestSuccessMessage(`Planification du test ${state} en cours...`);
+      await notificationScheduler.schedulePressureCoachAlerts(state);
+      setTestSuccessMessage(`Test ${state} planifié avec succès ! ⚡`);
+      setTimeout(() => setTestSuccessMessage(''), 4000);
+    } catch (e) {
+      alert("Erreur lors de la planification du test.");
+      setTestSuccessMessage('');
+    }
+  };
+
   const handleReset = async () => {
-    if (confirm("Voulez-vous vraiment réinitialiser toutes vos données locales d'audit ?")) {
+    if (confirm("Voulez-vous vraiment réinitialiser toutes vos données locales ?")) {
       await storageService.clearAll();
       setUserName('Mehmet');
-      setWakeGoal('06:30');
-      setSleepGoal('22:30');
+      setWakeGoal('07:00');
+      setSleepGoal('23:00');
       setNotificationsEnabled(false);
       setGeminiKey('');
       alert("Toutes les données ont été réinitialisées.");
@@ -134,7 +138,7 @@ export function SettingsScreen() {
               style={styles.textInput}
               value={wakeGoal}
               onChangeText={setWakeGoal}
-              placeholder="06:30"
+              placeholder="07:00"
               placeholderTextColor="#8A9CAE"
             />
           </View>
@@ -145,7 +149,7 @@ export function SettingsScreen() {
               style={styles.textInput}
               value={sleepGoal}
               onChangeText={setSleepGoal}
-              placeholder="22:30"
+              placeholder="23:00"
               placeholderTextColor="#8A9CAE"
             />
           </View>
@@ -179,6 +183,40 @@ export function SettingsScreen() {
 
           {saveSuccess && (
             <Text style={styles.successText}>Paramètres sauvegardés avec succès ! ✨</Text>
+          )}
+        </View>
+
+        {/* AI Pressure Simulator Testing Card */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Activity size={16} color="#6366F1" />
+            <Text style={styles.cardTitle}>Simulateur de Pression IA</Text>
+          </View>
+
+          <Text style={[styles.inputDesc, { marginBottom: 12, color: '#8A9CAE', fontSize: 11 }]}>
+            Teste immédiatement le comportement sonore et haptique du planificateur selon tes états de discipline réels.
+          </Text>
+
+          <View style={styles.testButtonsRow}>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => triggerPressureTest('GOOD')}
+              style={[styles.testButton, { backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: '#22C55E' }]}
+            >
+              <Text style={[styles.testButtonText, { color: '#22C55E' }]}>🟢 TEST GOOD</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => triggerPressureTest('BAD')}
+              style={[styles.testButton, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: '#EF4444' }]}
+            >
+              <Text style={[styles.testButtonText, { color: '#EF4444' }]}>🔴 TEST BAD</Text>
+            </TouchableOpacity>
+          </View>
+
+          {testSuccessMessage !== '' && (
+            <Text style={styles.testSuccessText}>{testSuccessMessage}</Text>
           )}
         </View>
 
@@ -318,6 +356,31 @@ const styles = StyleSheet.create({
   successText: {
     color: '#22C55E',
     fontSize: 12,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  testButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 8,
+  },
+  testButton: {
+    width: '48%',
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  testButtonText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  testSuccessText: {
+    color: '#6366F1',
+    fontSize: 11,
     fontWeight: '800',
     textAlign: 'center',
     marginTop: 12,
