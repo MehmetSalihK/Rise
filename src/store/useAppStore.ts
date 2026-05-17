@@ -22,6 +22,19 @@ export interface HygieneData {
   night: boolean;
 }
 
+export interface DailyHistoryEntry {
+  routineCompleted: boolean;
+  sleepGoalMet: boolean;
+  energyScore: number;
+  wakeTimeLogged: string;
+}
+
+export interface Alert {
+  id: string;
+  message: string;
+  type: 'discipline' | 'sleep' | 'routine' | 'streak';
+}
+
 interface AppState {
   // Settings & Profile
   userName: string;
@@ -43,6 +56,15 @@ interface AppState {
   // Hygiene
   hygieneHistory: HygieneData[];
   updateHygiene: (date: string, time: 'morning' | 'noon' | 'night', completed: boolean) => void;
+
+  // History & Calibration (V4 Visual Habit Calendar)
+  history: Record<string, DailyHistoryEntry>;
+  saveDayToHistory: (date: string, entry: DailyHistoryEntry) => void;
+
+  // Alerts & Toast Engine (V4)
+  activeAlerts: Alert[];
+  addAlert: (message: string, type: 'discipline' | 'sleep' | 'routine' | 'streak') => void;
+  removeAlert: (id: string) => void;
 
   // Discipline & Streak Score
   disciplineScore: number;
@@ -92,20 +114,19 @@ export const useAppStore = create<AppState>()(
           const wasAllCompleted = state.habits.every((h) => h.completed);
           
           let scoreDelta = 0;
-          let xpDelta = 10; // +10 XP for checking habit
+          let xpDelta = 10;
 
-          // If toggled from checked to unchecked
           const targetedHabit = state.habits.find(h => h.id === id);
           if (targetedHabit?.completed) {
             xpDelta = -10;
           }
 
           if (isAllCompleted) {
-            scoreDelta = 10; // Complete routine reward
-            xpDelta += 50; // +50 XP bonus for completing whole routine
+            scoreDelta = 10;
+            xpDelta += 50;
           } else if (wasAllCompleted && !isAllCompleted) {
-            scoreDelta = -10; // Penalty
-            xpDelta -= 50; // Lose routine completion bonus
+            scoreDelta = -10;
+            xpDelta -= 50;
           }
 
           return { 
@@ -130,7 +151,6 @@ export const useAppStore = create<AppState>()(
           const filtered = state.sleepHistory.filter((d) => d.date !== data.date);
           const newHistory = [...filtered, data];
           
-          // Reward early/regular sleep with discipline & XP boost
           const durationGoalMet = data.duration >= 7 && data.duration <= 9;
           const scoreDelta = durationGoalMet ? 5 : -2;
           const xpDelta = durationGoalMet ? 30 : 10;
@@ -155,7 +175,6 @@ export const useAppStore = create<AppState>()(
             newHistory.push(newEntry);
           }
 
-          // Compute discipline delta based on hygiene habit change
           const scoreDelta = completed ? 2 : -2;
           const xpDelta = completed ? 5 : -5;
 
@@ -165,6 +184,37 @@ export const useAppStore = create<AppState>()(
             disciplineScore: Math.min(100, Math.max(0, state.disciplineScore + scoreDelta))
           };
         }),
+
+      // History & Visual Logs (V4)
+      history: {},
+      saveDayToHistory: (date, entry) =>
+        set((state) => ({
+          history: {
+            ...state.history,
+            [date]: entry
+          }
+        })),
+
+      // Alerts & Toast Engine (V4)
+      activeAlerts: [],
+      addAlert: (message, type) =>
+        set((state) => {
+          const exists = state.activeAlerts.some(a => a.message === message);
+          if (exists) return {}; // Prevent spamming duplicate messages
+          
+          const newAlert: Alert = {
+            id: Math.random().toString(36).substring(2, 9),
+            message,
+            type
+          };
+          return {
+            activeAlerts: [...state.activeAlerts, newAlert]
+          };
+        }),
+      removeAlert: (id) =>
+        set((state) => ({
+          activeAlerts: state.activeAlerts.filter(a => a.id !== id)
+        })),
 
       disciplineScore: 50,
       currentStreak: 0,
@@ -186,7 +236,7 @@ export const useAppStore = create<AppState>()(
           set((state) => ({
             streakHistory: [...state.streakHistory, todayStr],
             currentStreak: state.currentStreak + 1,
-            xp: state.xp + 40, // Bonus XP for keeping the flame alive!
+            xp: state.xp + 40,
             disciplineScore: Math.min(100, state.disciplineScore + 15)
           }));
         } else if (!allRoutineCompleted && isTodayStreakRecorded) {
@@ -215,6 +265,8 @@ export const useAppStore = create<AppState>()(
           habits: defaultHabits,
           sleepHistory: [],
           hygieneHistory: [],
+          history: {},
+          activeAlerts: [],
           disciplineScore: 50,
           currentStreak: 0,
           streakHistory: [],
@@ -233,6 +285,7 @@ export const useAppStore = create<AppState>()(
         habits: state.habits,
         sleepHistory: state.sleepHistory,
         hygieneHistory: state.hygieneHistory,
+        history: state.history,
         disciplineScore: state.disciplineScore,
         currentStreak: state.currentStreak,
         streakHistory: state.streakHistory,

@@ -31,6 +31,7 @@ export const viewport: Viewport = {
 };
 
 import { SyncProvider } from "@/components/providers/SyncProvider";
+import { ToastContainer } from "@/components/ui/ToastContainer";
 
 export default function RootLayout({
   children,
@@ -41,6 +42,7 @@ export default function RootLayout({
     <html lang="fr" className={`${inter.variable} h-full antialiased dark`}>
       <body className="min-h-full flex flex-col pb-20 selection:bg-primary/30">
         <SyncProvider />
+        <ToastContainer />
         <main className="flex-1 w-full max-w-md mx-auto">
           {children}
         </main>

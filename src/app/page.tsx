@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAppStore, getDisciplineLevel } from "@/store/useAppStore"
 import { Card } from "@/components/ui/Card"
 import { ProgressBar } from "@/components/ui/ProgressBar"
 import { EnergyBar } from "@/components/ui/EnergyBar"
 import { getGreeting, getDailyQuote } from "@/lib/motivation"
-import { Flame, Target, CheckCircle2, ChevronRight, Moon, Cloud, CloudOff, Loader2, Sparkles, Zap, Eye, EyeOff } from "lucide-react"
+import { Flame, Target, CheckCircle2, ChevronRight, Moon, Cloud, Loader2, Zap, Eye, EyeOff, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
 export default function Home() {
@@ -44,6 +44,35 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [])
 
+  // V4 Dynamic Risk Warnings
+  const riskWarnings = useMemo(() => {
+    const list = []
+    const now = new Date()
+    const hour = now.getHours()
+    const minute = now.getMinutes()
+    const [wakeH, wakeM] = wakeGoal.split(':').map(Number)
+    
+    // 1. Routine late (no actions completed 2h after wakeGoal)
+    const isRoutineLate = completedHabits === 0 && (hour * 60 + minute) > (wakeH * 60 + wakeM + 120)
+    if (isRoutineLate) {
+      list.push("Routine en retard : Tu n'as pas encore validé tes premières habitudes ce matin.")
+    }
+
+    // 2. Streak in danger (streak active, habits incomplete, and it's past 18:00)
+    const isStreakInDanger = currentStreak > 0 && completedHabits < totalHabits && hour >= 18
+    if (isStreakInDanger) {
+      list.push("Série en danger : Complète tes habitudes ce soir pour ne pas éteindre ta flamme !")
+    }
+
+    // 3. Sleep insufficient (< 6 hours logged today)
+    const isSleepInsufficient = lastSleep ? lastSleep.duration < 6.0 : false
+    if (isSleepInsufficient) {
+      list.push(`Sommeil insuffisant : Seulement ${lastSleep?.duration.toFixed(1)}h dormies. Privilégie une sieste ou couche-toi plus tôt ce soir.`)
+    }
+
+    return list
+  }, [wakeGoal, completedHabits, currentStreak, totalHabits, lastSleep])
+
   // Framer motion variants
   const container = {
     hidden: { opacity: 0 },
@@ -62,7 +91,6 @@ export default function Home() {
     setSettings({ focusModeActive: !focusModeActive })
   }
 
-  // Adaptive Routine: Focus Mode displays only top 3 adaptive habits
   const focusHabits = habits.slice(0, 3)
 
   return (
@@ -203,6 +231,23 @@ export default function Home() {
                 </div>
               </Card>
             </motion.div>
+
+            {/* V4 Risk Warnings Alerts Card */}
+            {riskWarnings.length > 0 && (
+              <motion.div variants={item}>
+                <Card className="p-4 border-rose-500/20 bg-rose-500/[0.03] shadow-md relative overflow-hidden space-y-3">
+                  <div className="flex items-center space-x-2 text-rose-400">
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <h4 className="text-xs font-black uppercase tracking-wider">Alerte & Risque</h4>
+                  </div>
+                  <ul className="space-y-2 text-xs text-muted-foreground list-disc list-inside font-semibold leading-relaxed">
+                    {riskWarnings.map((warning, i) => (
+                      <li key={i}>{warning}</li>
+                    ))}
+                  </ul>
+                </Card>
+              </motion.div>
+            )}
 
             {/* Greeting */}
             <motion.p variants={item} className="text-lg font-bold text-foreground/90 pt-1">
