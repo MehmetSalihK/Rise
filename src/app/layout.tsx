@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Rise - Discipline & Habits",
-  description: "Premium personal discipline and habit tracker",
+  title: "Rise - Hard Discipline Mode",
+  description: "Discipline extrême, routine quotidienne et aversion à l'échec",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -23,15 +23,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: "#0B0F14",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
 };
-
-import { SyncProvider } from "@/components/providers/SyncProvider";
-import { ToastContainer } from "@/components/ui/ToastContainer";
 
 export default function RootLayout({
   children,
@@ -40,9 +37,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${inter.variable} h-full antialiased dark`}>
-      <body className="min-h-full flex flex-col pb-20 selection:bg-primary/30">
-        <SyncProvider />
-        <ToastContainer />
+      <body className="min-h-full flex flex-col pb-20 selection:bg-primary/30 bg-[#0B0F14] no-scrollbar">
         <main className="flex-1 w-full max-w-md mx-auto">
           {children}
         </main>
