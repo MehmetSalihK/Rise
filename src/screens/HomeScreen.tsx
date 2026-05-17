@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { storageService, KEYS } from '../services/storageService';
 import { StreakBadge } from '../components/StreakBadge';
-import { ChevronRight, Clock, ShieldAlert, Award, Sparkles, Activity, ShieldCheck } from 'lucide-react-native';
+import { ChevronRight, Clock, ShieldAlert, Award, Sparkles, Activity, ShieldCheck, Sun } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { DailyTrackingLog } from '../hooks/useTracking';
 import { DailyGoals } from '../core/goalEngine';
 import { permissionManager } from '../notifications/permissionManager';
 import { pressureSystem, PressureState } from '../notifications/pressureSystem';
+import { useWakeUpGoal } from '../hooks/useWakeUpGoal';
 
 export function HomeScreen({ navigation }: any) {
   const [time, setTime] = useState('');
@@ -16,6 +17,9 @@ export function HomeScreen({ navigation }: any) {
   const [latestAudit, setLatestAudit] = useState<DailyTrackingLog | null>(null);
   const [goalsDefined, setGoalsDefined] = useState(false);
   const [pressure, setPressure] = useState<PressureState>('MEDIUM');
+
+  // V7 Wake-up goal hook
+  const { wakeTime, isAwake, confirmAwake } = useWakeUpGoal();
 
   // Permission flow onboarding
   useEffect(() => {
@@ -76,7 +80,7 @@ export function HomeScreen({ navigation }: any) {
 
   const getPressureLabel = (p: PressureState) => {
     if (p === 'GOOD') return '🟢 DISCIPLINE SAINE';
-    if (p === 'MEDIUM') return '🟠 COACH ATTIENTIF';
+    if (p === 'MEDIUM') return '🟠 COACH ATTENTIF';
     return '🔴 PRESSION DISSOCIATIVE ACTIVE';
   };
 
@@ -94,7 +98,27 @@ export function HomeScreen({ navigation }: any) {
           <StreakBadge streak={currentStreak} />
         </View>
 
-        {/* Dynamic V6 Pressure Coach status badge */}
+        {/* V7 Active morning alarm simulation widget */}
+        {!isAwake && (
+          <View style={styles.alarmCard}>
+            <View style={styles.alarmRow}>
+              <Sun size={18} color="#F59E0B" />
+              <Text style={styles.alarmTitle}>RÉVEIL ACTIF CIBLE : {wakeTime}</Text>
+            </View>
+            <Text style={styles.alarmText}>
+              Le système de rappel séquentiel matinal est actif. Confirme ton réveil.
+            </Text>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={confirmAwake}
+              style={styles.awakeButton}
+            >
+              <Text style={styles.awakeButtonText}>JE SUIS DEBOUT ☀️</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Dynamic V6/V7 Pressure Coach status badge */}
         <View style={[styles.pressureCard, { borderColor: `${getPressureColor(pressure)}40` }]}>
           <View style={styles.pressureRow}>
             <ShieldCheck size={14} color={getPressureColor(pressure)} />
@@ -229,6 +253,46 @@ const styles = StyleSheet.create({
   streakWrapper: {
     alignItems: 'center',
     marginVertical: 8,
+  },
+  alarmCard: {
+    backgroundColor: '#121826',
+    borderColor: '#F59E0B',
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 18,
+    marginVertical: 8,
+  },
+  alarmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  alarmTitle: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginLeft: 6,
+  },
+  alarmText: {
+    color: '#8A9CAE',
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 15,
+    marginBottom: 12,
+  },
+  awakeButton: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  awakeButtonText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   pressureCard: {
     backgroundColor: '#121826',

@@ -4,9 +4,9 @@ import { storageService, KEYS } from '../services/storageService';
 import { notificationService } from '../services/notificationService';
 import { aiService } from '../services/aiService';
 import { notificationScheduler } from '../notifications/notificationScheduler';
-import { Settings, User, Bell, Trash2, Shield, Brain, Activity } from 'lucide-react-native';
+import { Settings, User, Bell, Trash2, Shield, Brain, Activity, ChevronRight } from 'lucide-react-native';
 
-export function SettingsScreen() {
+export function SettingsScreen({ navigation }: any) {
   const [userName, setUserName] = useState('Mehmet');
   const [wakeGoal, setWakeGoal] = useState('07:00');
   const [sleepGoal, setSleepGoal] = useState('23:00');
@@ -215,6 +215,16 @@ export function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
+          {/* Diagnostic screen access portal link */}
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate('NotificationTest')}
+            style={styles.diagnosticLinkButton}
+          >
+            <Text style={styles.diagnosticLinkText}>Ouvrir les diagnostics de notifications</Text>
+            <ChevronRight size={12} color="#6366F1" />
+          </TouchableOpacity>
+
           {testSuccessMessage !== '' && (
             <Text style={styles.testSuccessText}>{testSuccessMessage}</Text>
           )}
@@ -377,6 +387,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  diagnosticLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderColor: '#1F2E45',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 8,
+  },
+  diagnosticLinkText: {
+    color: '#6366F1',
+    fontSize: 11,
+    fontWeight: '800',
   },
   testSuccessText: {
     color: '#6366F1',

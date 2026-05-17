@@ -9,6 +9,7 @@ import { InputTrackingScreen } from './src/screens/InputTrackingScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { NotificationTestScreen } from './src/screens/NotificationTestScreen';
 import { Home, Calendar, Settings as SettingsIcon } from 'lucide-react-native';
 
 const Tab = createBottomTabNavigator();
@@ -77,6 +78,7 @@ export default function App() {
         <Stack.Screen name="DailyGoals" component={DailyGoalsScreen} />
         <Stack.Screen name="InputTracking" component={InputTrackingScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
+        <Stack.Screen name="NotificationTest" component={NotificationTestScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
