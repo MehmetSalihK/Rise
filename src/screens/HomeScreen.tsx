@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { storageService, KEYS } from '../services/storageService';
 import { StreakBadge } from '../components/StreakBadge';
-import { ChevronRight, Brain, Clock, ShieldAlert } from 'lucide-react-native';
+import { ChevronRight, Sparkles, Clock, ShieldAlert, Award } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuditLog } from '../hooks/useCheckIn';
+import { DailyPlan } from '../core/dailyPlanGenerator';
 
 export function HomeScreen({ navigation }: any) {
   const [time, setTime] = useState('');
   const [date, setDate] = useState('');
   const [currentStreak, setCurrentStreak] = useState(0);
   const [latestAudit, setLatestAudit] = useState<AuditLog | null>(null);
+  const [dailyPlan, setDailyPlan] = useState<DailyPlan | null>(null);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -18,6 +20,7 @@ export function HomeScreen({ navigation }: any) {
         const streak = await storageService.getItem<number>(KEYS.CURRENT_STREAK, 0);
         const todayStr = new Date().toISOString().split('T')[0];
         const latest = await storageService.getItem<AuditLog | null>('rise_latestAudit', null);
+        const plan = await storageService.getItem<DailyPlan | null>('rise_dailyPlan', null);
         
         setCurrentStreak(streak);
         
@@ -25,6 +28,12 @@ export function HomeScreen({ navigation }: any) {
           setLatestAudit(latest);
         } else {
           setLatestAudit(null);
+        }
+
+        if (plan && plan.date === todayStr) {
+          setDailyPlan(plan);
+        } else {
+          setDailyPlan(null);
         }
       };
       loadDashboard();
@@ -48,6 +57,9 @@ export function HomeScreen({ navigation }: any) {
     return '#EF4444';
   };
 
+  const planCompletedCount = dailyPlan ? dailyPlan.actions.filter(a => a.completed).length : 0;
+  const planTotalCount = dailyPlan ? dailyPlan.actions.length : 0;
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -62,12 +74,36 @@ export function HomeScreen({ navigation }: any) {
           <StreakBadge streak={currentStreak} />
         </View>
 
-        {/* Core Behavior State card */}
+        {/* Plan du Jour IA Preview Card */}
+        {dailyPlan && (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => navigation.navigate('Plan')}
+            style={styles.planCard}
+          >
+            <View style={styles.planHeader}>
+              <View style={styles.planHeaderLeft}>
+                <Sparkles size={14} color="#6366F1" />
+                <Text style={styles.planTitle}>PLAN DU JOUR IA</Text>
+              </View>
+              <Text style={styles.planProgress}>
+                {planCompletedCount}/{planTotalCount} ACTIONS
+              </Text>
+            </View>
+            <Text style={styles.planGoal}>"{dailyPlan.goal}"</Text>
+            <View style={styles.planFooter}>
+              <Text style={styles.planActionLink}>Ouvrir le plan</Text>
+              <ChevronRight size={14} color="#6366F1" />
+            </View>
+          </TouchableOpacity>
+        )}
+
+        {/* Daily Audit State Card */}
         {latestAudit ? (
           <View style={[styles.statusCard, { borderColor: getCategoryColor(latestAudit.category) }]}>
             <View style={styles.statusHeader}>
               <View style={styles.statusHeaderLeft}>
-                <Brain size={14} color="#6366F1" />
+                <Award size={14} color="#6366F1" />
                 <Text style={styles.statusTitle}>AUDIT COMPLÉTÉ</Text>
               </View>
               <View style={[styles.badge, { backgroundColor: `${getCategoryColor(latestAudit.category)}15` }]}>
@@ -153,12 +189,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: 12,
   },
+  planCard: {
+    backgroundColor: '#121826',
+    borderColor: 'rgba(99, 102, 241, 0.3)',
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 20,
+    marginVertical: 10,
+  },
+  planHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  planHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  planTitle: {
+    color: '#6366F1',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginLeft: 6,
+  },
+  planProgress: {
+    color: '#8A9CAE',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  planGoal: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 18,
+    marginVertical: 6,
+  },
+  planFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 6,
+  },
+  planActionLink: {
+    color: '#6366F1',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    marginRight: 4,
+  },
   statusCard: {
     backgroundColor: '#121826',
     borderWidth: 1,
     borderRadius: 22,
     padding: 20,
-    marginVertical: 16,
+    marginVertical: 10,
   },
   statusHeader: {
     flexDirection: 'row',

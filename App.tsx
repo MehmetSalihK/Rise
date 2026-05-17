@@ -4,11 +4,13 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { DailyPlanScreen } from './src/screens/DailyPlanScreen';
 import { CheckInScreen } from './src/screens/CheckInScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
+import { SleepScreen } from './src/screens/SleepScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
-import { Home, Calendar, Settings as SettingsIcon } from 'lucide-react-native';
+import { Home, Sparkles, Moon, Calendar, Settings as SettingsIcon } from 'lucide-react-native';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -41,7 +43,7 @@ function MainTabs() {
           height: 60,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: '800',
           textTransform: 'uppercase',
         },
@@ -50,6 +52,10 @@ function MainTabs() {
           switch (route.name) {
             case 'Home':
               return <Home size={iconSize} color={color} />;
+            case 'Plan':
+              return <Sparkles size={iconSize} color={color} />;
+            case 'Sleep':
+              return <Moon size={iconSize} color={color} />;
             case 'History':
               return <Calendar size={iconSize} color={color} />;
             case 'Settings':
@@ -61,6 +67,8 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Accueil' }} />
+      <Tab.Screen name="Plan" component={DailyPlanScreen} options={{ title: 'Mon Plan' }} />
+      <Tab.Screen name="Sleep" component={SleepScreen} options={{ title: 'Sommeil' }} />
       <Tab.Screen name="History" component={HistoryScreen} options={{ title: 'Historique' }} />
       <Tab.Screen name="Settings" component={SettingsScreen} options={{ title: 'Réglages' }} />
     </Tab.Navigator>
